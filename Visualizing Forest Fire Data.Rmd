@@ -1,0 +1,162 @@
+---
+title: "Visualizing Forest Fire Data"
+author: "Ramzy Ragab"
+date: "22-5-2021"
+output: html_document
+---
+
+## Visualizing Forest Fire Data with R
+
+### 1. Introduction
+
+Forest fires are an increasingly serious problem for humankind and nature alike, in the face of global warming and environmental change. Forest fires have the potential to turn tens or hundreds of hectares of forests into ashes. Managing forest fires is therefore crucial, and may become ever more important in the future. Also important is to understand the possible causes of forest fires, in order to prevent the occurrence and severity of them as much as possible. In this short research project, we will investigate and visualize forest fire data. Our data consists of all forest fires registered in the Montesinho Natural Park in northeastern Portugal, in 2019. Our research will focus on both the frequency and the severity of forest fires.
+
+
+#### Importing and Exploring the Data
+```{r}
+
+library(tidyverse)
+forest_fires <- read_csv("C:\\Users\\ramzy\\Downloads\\forestfires.csv")
+
+```
+
+#### Converting the Day and Month Variables
+
+By default, R sorts values by alphabetical order. This means that if we sort the 'month' column, the result would be an alphabetical order of months, rather than the standard order that ranges from January to December. To solve this, we will convert the 'month' column into a categorical variable with an inherent order. This will also be applied to the 'day' column, which currently has the same issue.
+
+```{r}
+
+forest_fires <- forest_fires %>%
+  mutate(
+    month = factor(month, levels = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")),
+    day = factor(day, levels = c("mon", "tue", "wed", "thu", "fri", "sat", "sun"))
+  )
+
+```
+
+### 2. When Do Most Forest Fires Occur?
+
+Now that we have formatted the day and month columns, we can have a first analytic look at the important underlying factors of forest fires. The most obvious question to start with is when forest fires occur most. Finding the answer to this question may serve as a basis for further exploration and might also hint to certain factors to then investigate further. Our data set allows us to ask two specific questions regarding the 'when' factor: how many forest fires have been registered per month in 2019, and how many have been registered per day of the week? In the code below, we create a new tibble for each question. One groups the registered forest fire by month, and the other groups them by day of the week. This enables us to visualize the occurrence of forest fires in an easy to understand manner.
+
+```{r}
+
+ff_month <- forest_fires %>%
+  group_by(month) %>%
+  summarize(total_fires = n())
+
+ff_month %>%
+  ggplot(aes(x = month, y = total_fires)) +
+  geom_col() +
+  labs(
+    title = "Forest Fires per Month (2019)",
+    x = 'Month',
+    y = 'Number of Fires'
+  )
+
+
+ff_day <- forest_fires %>%
+  group_by(day) %>%
+  summarize(total_fires = n())
+
+ff_day %>%
+  ggplot(aes(x = day, y = total_fires)) +
+  geom_col() +
+  labs(
+    title = "Forest Fires per Day of the Week (2019)",
+    x = 'Day of the Week',
+    y = 'Number of Fires'
+  )
+```
+
+Our data visualizations give us two valuable insights into the occurrence of forest fires in the Montesinho Natural Park in Portugal. First, we observe that a vast majority of forest fires takes place in the months of August and September, with also a minor peak in March. Second, most of the forest fires occur at weekends, with a peak on Sunday. Before continuing the analysis, it is worth considering the different factors that could be in play here. As for the forest fires per month, it seems reasonable to assume that factors such as higher temperatures and more drought during summer contribute to the spikes in forest fires. However, from this visualization it does not become immediately clear why March stands out as the third highest ranked month by such a distance. As for the forest fires per day of the week chart, while the distribution of forest fires is much more evenly spread, it has to be noted that the weekend days count substantially more fires than other days. Therefore, it seems plausible that human activity requires further attention, for it might explain more about the causes of this particular distribution. This, however, is beyond the scope of our data set. Instead, we will focus on the number of fires per month, for which we may have more relevant data in the dataset.
+
+### 3. Plotting Other Variables Against Time
+
+The data set on forest fires in the Montesinho Natural Park provide us with a number of interesting variables that could help determine some of the main factors that cause forest fires. We will use the following eight variables in our analysis below:
+
+* FFMC: Fine Fuel Moisture Code
+* DMC: Duff Moisture Code 
+* DC: Drought Code 
+* ISI: Initial Spread Index
+* temp: Temperature in Celsius degrees
+* RH: Relative humidity in percentage
+* wind: Wind speed in km/h
+* rain: Outside rain in mm/m2
+
+These variables will be plotted against the time variable that we have used earlier, to count the number of forest fires per month. In this case, we will use a boxplot format to plot the eight variables above. This will give us detailed information about each index or metric for each month. It will also enable us to draw direct comparison with the forest fires per month chart.
+
+```{r fig.align="center", fig.width = 14}
+
+ffpiv <- forest_fires %>%
+  pivot_longer(
+    cols = c(FFMC, DMC, DC, ISI, temp, RH, wind, rain),
+    names_to = "column",
+    values_to = "value"
+  )
+
+ffpiv %>%
+  ggplot(aes(x = month, y = value)) +
+  geom_boxplot() +
+  facet_wrap(vars(column), ncol = 4, scale = "free_y") +
+  labs(
+    title = "Variables Plotted Against Time",
+    x = "Month",
+    y = "Variable Values"
+  )
+
+```
+
+Looking at the box plots, we notice a clear indication of the explanatory power of each individual variable. Taking into consideration that the majority of forest fires occur in the months of August and September, we will analyze each variable step-by-step. Starting with the Drought Code (DC), the box plot shows that the months of August and September are very dry, and so is October. The box plot for the Duff Moisture Code (DMC), which rates "the average moisture content of loosely compacted organic layers of moderate depth", shows us that in the months of July, August and September, indicates that fuel consumption in moderate duff layers and medium-size woody material is much higher than in other months, and thus seems strongly correlated to the occurrence of forest fires. The Fine Fuel Moisture Code (FFMC), however, records high ratings throughout the year and therefore doesn't seem to affect the likelihood and severity of forest fires in this case. The Initial Spread Index (ISI) is higher during summer than in other times of the year, though the differences appear smaller due to the single outlier in June. Nevertheless, fires appear more likely to spread during summer, and helps explain the occurrence of fires in the months of August and September. The rain data appears to be incomplete. The Relative Humidity (RH) variable is also interesting, because it shows that the months of not only August and September, but also March are among the least humid months of the year. As March stood out as the clear number three in terms of forest fires, this could be very valuable information. In terms of temperature, August and September are among the highest as well. Finally, wind does not seem a decisive explanatory factor, at least not in isolation. 
+
+Altogether, these plots suggest that the Drought Code, Duff Moisture Code, Initial Spread Index, Relative Humidity and Temperature can be useful isolated indicators of forest fires. It does not seem to provide a very clear distinction between July and the months of August and September, however.
+
+### 4. Examining the Severity of Forest Fires
+
+So far, our analysis has focused solely on the frequency of forest fires, and how that relates to a set of different variables. While this provides useful information, our current data cannot distinguish forest fires in terms of their severity. Yet, it would be very useful to know how to prevent the most severe fires, and how to minimize severity. In order to do so, we will use the data set to test the relationship between the variables used above and the severity of forest fires. Our data set includes a column, 'area', which describes the area burned during the forest fires, in hectares of forest. While perhaps not a direct measurement of severity, data on the area affected by the forest fire could serve as an indicator of it. 
+
+```{r fig.align="center", fig.width = 14}
+
+ffpiv2 <- forest_fires %>%
+  pivot_longer(
+    cols = c(FFMC, DMC, DC, ISI, temp, RH, wind, rain),
+    names_to = "column",
+    values_to = "value"
+  )
+
+ffpiv2 %>%
+  ggplot(aes(x = value, y = area)) +
+  geom_point() +
+  facet_wrap(vars(column), ncol = 4, scale = "free_x") + 
+   labs(
+    title = "Relationships Between Variables and Severity of Forest Fires (2019)",
+    x = "Area Affected (hectare)",
+    y = "Value"
+  )
+
+```
+
+Unfortunately, the visualization seems affected by two major forest fires that appear in every plot as outliers. We believe that these distort the information that we are looking for, as it pushes all the other forest fire observations closer together. In order to get a better distinction between observed fires, the two outliers will be filtered out, and the scatter plots will be rendered once more. 
+
+```{r fig.align="center", fig.width = 14}
+
+ffpiv2 <- forest_fires %>%
+  pivot_longer(
+    cols = c(FFMC, DMC, DC, ISI, temp, RH, wind, rain),
+    names_to = "column",
+    values_to = "value"
+  )
+
+ffpiv2 %>%
+  filter(area >= 1 & area < 400) %>%
+  ggplot(aes(x = value, y = area)) +
+  geom_point() +
+  facet_wrap(vars(column), ncol = 4, scale = "free_x") +
+  labs(
+    title = "Relationships Between Variables and Severity of Forest Fires (2019)",
+    x = "Area Affected (hectare)",
+    y = "Value"
+  )
+
+```
+
+Having the outliers filtered out, the scatter plots still do not present decisive outcomes. They do seem to reaffirm the strength of some of the variables though. Forest fires tend to occur most frequently when FFMC scores are above 84, for instance. Also the DC, DMC and RH indexes show clusters of forest fire occurrences. This supports the usage of these indexes as possible predictors of forest fires. However, none of the variables show a clear picture of what causes some forest fires to be more severe than others. Most forest fires affect relatively small areas. The most destructive forest fires only appear to have a few things in common: lower Relative Humidity scores and higher temperatures seem to contribute to larger areas burned by the fires. This correlation is not very convincing, however. This poses the question whether affected area is an accurate measurement of forest fire severity. It also 
